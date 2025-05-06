@@ -1,3 +1,5 @@
+use nanoid::nanoid;
+
 pub fn generate() -> String {
-    nanoid
+    nanoid!(6)
 }
