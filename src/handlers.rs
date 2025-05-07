@@ -8,8 +8,8 @@ use axum::{
 };
 use crate::{
     error::Result,
-    service::{ create_link, lookup },
-    store::{ memory::MemoryStore, LinkStore },
+    service::{ create_link, delete_short_link, lookup },
+    store::{ mongo::MongoStore, LinkStore },
 };
 
 #[derive(Serialize)]
@@ -34,11 +34,17 @@ pub struct CreateResp {
     pub created_at: DateTime<Utc>,
     pub clicks: u64,
 }
+
+#[derive(Serialize)]
+pub struct Message {
+    message: String,
+}
+
 pub async fn create_short_link(
-    State(store): State<MemoryStore>,
+    State(store): State<MongoStore>,
     Json(body): Json<CreateReq>
 ) -> Result<impl IntoResponse> {
-    let link = create_link(&store, &body.url)?;
+    let link = create_link(&store, &body.url).await?;
     let short_url = format!("http://localhost:8080/{}", link.slug);
     Ok((
         StatusCode::CREATED,
@@ -53,10 +59,10 @@ pub async fn create_short_link(
 }
 
 pub async fn get_clicks(
-    State(store): State<MemoryStore>,
+    State(store): State<MongoStore>,
     Path(slug): Path<String>
 ) -> Result<impl IntoResponse> {
-    let link = lookup(&store, &slug)?;
+    let link = lookup(&store, &slug).await?;
     Ok((
         StatusCode::OK,
         Json(CreateResp {
@@ -70,10 +76,18 @@ pub async fn get_clicks(
 }
 
 pub async fn redirect_slug(
-    State(store): State<MemoryStore>,
+    State(store): State<MongoStore>,
     Path(slug): Path<String>
 ) -> Result<impl IntoResponse> {
-    let link = lookup(&store, &slug)?;
-    store.increment_click(&slug);
+    let link = lookup(&store, &slug).await?;
+    store.increment_click(&slug).await?;
     Ok(Redirect::temporary(&link.long_url))
+}
+
+pub async fn delete_link(
+    State(store): State<MongoStore>,
+    Path(slug): Path<String>
+) -> Result<impl IntoResponse> {
+    let _ = delete_short_link(&store, &slug).await?;
+    Ok((StatusCode::OK, Json(Message { message: "Slug Deleted Successfully".to_owned() })))
 }

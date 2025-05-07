@@ -15,6 +15,24 @@ struct ErrBody {
     error: String,
 }
 
+impl From<mongodb::error::Error> for AppError {
+    fn from(e: mongodb::error::Error) -> Self {
+        AppError::Anyhow(e.into())
+    }
+}
+
+impl From<bson::ser::Error> for AppError {
+    fn from(e: bson::ser::Error) -> Self {
+        AppError::Anyhow(e.into())
+    }
+}
+
+impl From<bson::de::Error> for AppError {
+    fn from(e: bson::de::Error) -> Self {
+        AppError::Anyhow(e.into())
+    }
+}
+
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let code = match self {
